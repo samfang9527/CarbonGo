@@ -7,7 +7,7 @@ const MainContainer = styled.div`
     border: none;
     border-radius: 20px;
     position: absolute;
-    bottom: 25%;
+    bottom: 15%;
     left: 15%;
     z-index: 3;
     display: flex;
