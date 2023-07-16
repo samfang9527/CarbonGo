@@ -1,12 +1,13 @@
 
 import styled from "styled-components";
-import { ChangeEvent } from "react";
+import React, { ChangeEvent } from "react";
 import { useEffect, useState, useContext, useRef } from "react";
 import { MapContext, MapContextType } from "./MapPage";
-import mapboxgl from "mapbox-gl";
+import mapboxgl, { LngLatLike } from "mapbox-gl";
 import MapboxGeocoding, { GeocodeFeature } from "@mapbox/mapbox-sdk/services/geocoding";
 import { DefaultLocation } from "../../constant";
 import axios from "axios";
+import MyLocationIcon from '@mui/icons-material/MyLocation';
 
 const Container = styled.div`
     position: absolute;
@@ -30,6 +31,28 @@ const Heading = styled.h1`
     font-size: 40px;
     align-self: flex-start;
     margin: 10px 0px 10px 10px;
+`;
+
+const MyLocationInputBlock = styled.div`
+    width: 95%;
+    height: 30px;
+    border: none;
+    font-size: 16px;
+    margin: 10px 0px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+`;
+
+const MyLocationInput = styled.input`
+    width: 100%;
+    height: 30px;
+    font-size: 16px;
+    border: none;
+    background-color: whitesmoke;
+    margin: 5px 0px;
+    padding: 20px 2.5rem 20px 10px;
+    display: inline;
 `;
 
 const Input = styled.input`
@@ -70,6 +93,18 @@ const AutoCompleteLi = styled.li`
     }
 `;
 
+const LocationIcon = styled.div`
+    width: 24px;
+    height: 24px;
+    position: absolute;
+    right: 2.5rem;
+
+    :hover {
+        background-color: #eee;
+        cursor: pointer;
+    }
+`
+
 async function getDirections(map: mapboxgl.Map, startPoint: GeocodeFeature, endPoint: GeocodeFeature) {
 
     const originalLayer = map.getLayer("route");
@@ -79,7 +114,7 @@ async function getDirections(map: mapboxgl.Map, startPoint: GeocodeFeature, endP
     }
 
     const service = "directions";
-    const profile = "driving";
+    const profile = "driving-traffic";
     const geometries = "geojson";
     const [startLng, startLat] = startPoint.center;
     const [endLng, endLat] = endPoint.center;
@@ -141,6 +176,27 @@ const LocationInput: React.FC = () => {
     const [isSelected, setIsSelected] = useState<boolean>(false);
 
     useEffect(() => {
+        const options = {
+            enableHighAccuracy: false,
+            maximumAge: Infinity,
+        };
+
+        function getLocationSuccess(pos: GeolocationPosition) {
+            const crd = pos.coords;
+            if (map) {
+                const center: LngLatLike = [crd.longitude, crd.latitude];
+                map.flyTo({center})
+            }
+        }
+
+        function getLOcationError(err: GeolocationPositionError) {
+            console.error(err);
+        }
+
+        navigator.geolocation.getCurrentPosition(getLocationSuccess, getLOcationError, options)
+    }, [map])
+
+    useEffect(() => {
         async function searchPlaces() {
 
             const geocodingClient = MapboxGeocoding({
@@ -185,7 +241,8 @@ const LocationInput: React.FC = () => {
         if (map && selectedStartPoint) {
             const { center } = selectedStartPoint;
             const [ lng, lat ] = center;
-            map.flyTo({center: [lng, lat]});
+            console.log('center: ', center);
+            map.flyTo({center: [lng, lat], zoom: 14});
 
             if (startPointMarkerRef?.current) {
                 startPointMarkerRef.current.remove();
@@ -201,7 +258,7 @@ const LocationInput: React.FC = () => {
         if (map && selectedEndPoint) {
             const { center } = selectedEndPoint;
             const [ lng, lat ] = center;
-            map.flyTo({center: [lng, lat]});
+            map.flyTo({center: [lng, lat], zoom: 14});
 
             if (endPointMarkerRef?.current) {
                 endPointMarkerRef.current.remove();
@@ -249,10 +306,53 @@ const LocationInput: React.FC = () => {
         }
     }
 
+    function handleMyLocation(e: React.MouseEvent<HTMLSpanElement>) {
+        e.preventDefault();
+
+        const options = {
+            enableHighAccuracy: false,
+            maximumAge: Infinity
+        }
+
+        async function getLocationSuccess(pos: GeolocationPosition) {
+            const crd = pos.coords;
+            const center: LngLatLike = [crd.longitude, crd.latitude];
+            if (map) {
+                map.flyTo({center, zoom: 14});
+                // if (startPointMarkerRef?.current) {
+                //     startPointMarkerRef.current.remove();
+                // }
+                // const marker = new mapboxgl.Marker().setLngLat([crd.longitude, crd.latitude]).addTo(map);
+                // startPointMarkerRef.current = marker;
+                
+                const res = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${crd.longitude},${crd.latitude}.json?access_token=${mapboxgl.accessToken}&limit=1`)
+                const { features } = res.data;
+                if ( features ) {
+                    if (setStartPoint) setStartPoint(center);
+                    console.log(features)
+                    setSelectedStartPoint(features[0]);
+                    setStartPointSearchText(features[0].place_name);
+                    setStartPointSuggestions([]);
+                }
+            }
+        }
+
+        function getLOcationError(err: GeolocationPositionError) {
+            console.error('mylocation error: ', err);
+        }
+
+        navigator.geolocation.getCurrentPosition(getLocationSuccess, getLOcationError, options)
+    }
+
     return (
         <Container>
             <Heading>立即預約搭乘</Heading>
-            <Input type="text" placeholder="輸入上車地點" value={startPointSearchText} onChange={handleStartPoint} onFocus={handleStartPoint} />
+            <MyLocationInputBlock>
+                <MyLocationInput type="text" placeholder="輸入上車地點" value={startPointSearchText} onChange={handleStartPoint} onFocus={handleStartPoint} />
+                <LocationIcon onClick={handleMyLocation}>
+                    <MyLocationIcon />
+                </LocationIcon>
+            </MyLocationInputBlock>
             <Input type="text" placeholder="輸入目的地" value={endPointSearchText} onChange={handleEndPoint} onFocus={handleEndPoint} />
             {isFocusOnStartPoint && startPointSuggestions?.length > 0 && (
                 <AutoCompleteUl>

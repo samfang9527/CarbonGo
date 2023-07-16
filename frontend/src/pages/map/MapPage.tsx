@@ -5,6 +5,7 @@ import styled from "styled-components";
 import LocationInput from "./LocationInput";
 import mapboxgl, { LngLatLike } from "mapbox-gl";
 import { DefaultLocation } from "../../constant";
+import InfoCard from "./InfoCard";
 
 const Container = styled.div`
     width: 100%;
@@ -75,6 +76,7 @@ const MapPage: React.FC = () => {
             <Container>
                 <MapContainer id="map-container" />
                 <LocationInput />
+                <InfoCard />
             </Container>
         </MapContext.Provider>
     )
