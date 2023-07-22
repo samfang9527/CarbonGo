@@ -24,6 +24,8 @@ export interface MapContextType {
     setStartPoint: React.Dispatch<React.SetStateAction<LngLatLike | null>> | null; // 經緯度的陣列的狀態更新函式
     setEndPoint: React.Dispatch<React.SetStateAction<LngLatLike | null>> | null; // 經緯度的陣列的狀態更新函式
     map: mapboxgl.Map | null;
+    distance: number;
+    setDistance: React.Dispatch<React.SetStateAction<number>> | null;
 }
 
 export const MapContext = createContext<MapContextType>({
@@ -32,6 +34,8 @@ export const MapContext = createContext<MapContextType>({
     setStartPoint: null,
     setEndPoint: null,
     map: null,
+    distance: 0,
+    setDistance: null,
 });
 
 
@@ -40,6 +44,7 @@ const MapPage: React.FC = () => {
     const [startPoint, setStartPoint] = useState<LngLatLike | null>(null);
     const [endPoint, setEndPoint] = useState<LngLatLike | null>(null);
     const [map, setMap] = useState<mapboxgl.Map | null>(null);
+    const [distance, setDistance] = useState<number>(0);
 
     const mapBoxAccessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN || "";
 
@@ -73,6 +78,8 @@ const MapPage: React.FC = () => {
             setStartPoint,
             setEndPoint,
             map,
+            distance,
+            setDistance,
         }}>
             <Container>
                 <MapContainer id="map-container" />

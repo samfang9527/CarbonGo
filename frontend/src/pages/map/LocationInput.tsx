@@ -105,8 +105,12 @@ const LocationIcon = styled.div`
     }
 `
 
-async function getDirections(map: mapboxgl.Map, startPoint: GeocodeFeature, endPoint: GeocodeFeature) {
-
+async function getDirections(
+        map: mapboxgl.Map,
+        startPoint: GeocodeFeature,
+        endPoint: GeocodeFeature,
+        setDistance: React.Dispatch<React.SetStateAction<number>> | null
+    ) {
     const originalLayer = map.getLayer("route");
     if (originalLayer) {
         map.removeLayer("route");
@@ -123,6 +127,8 @@ async function getDirections(map: mapboxgl.Map, startPoint: GeocodeFeature, endP
     const response = await axios.get(targetAPIUrl);
     const { routes } = response.data;
     if (!routes) return;
+
+    if (setDistance) setDistance(routes[0].distance | 0);
 
     const routeCoordinates = routes[0].geometry.coordinates;
     const routeGeoJSON: GeoJSON.Feature<GeoJSON.LineString, GeoJSON.GeoJsonProperties> = {
@@ -153,6 +159,20 @@ async function getDirections(map: mapboxgl.Map, startPoint: GeocodeFeature, endP
             "line-width": 6,
         },
     });
+
+    // 計算路線的範圍
+    const bounds = new mapboxgl.LngLatBounds(
+        routeCoordinates[0],
+        routeCoordinates[0],
+    )
+
+    for (const coord of routeCoordinates) {
+        bounds.extend(coord);
+    }
+
+    map.fitBounds(bounds, {
+        padding: 40
+    });
 }
 
 const LocationInput: React.FC = () => {
@@ -160,7 +180,7 @@ const LocationInput: React.FC = () => {
     mapboxgl.accessToken = import.meta.env.VITE_MAPBOX_ACCESS_TOKEN;
 
     const mapContext: MapContextType | null = useContext(MapContext);
-    const { setStartPoint, setEndPoint, map } = mapContext;
+    const { setStartPoint, setEndPoint, map, setDistance } = mapContext;
 
     const [startPointSearchText, setStartPointSearchText] = useState('');
     const [startPointSuggestions, setStartPointSuggestions] = useState<GeocodeFeature[]>([]);
@@ -272,10 +292,10 @@ const LocationInput: React.FC = () => {
     // routes
     useEffect(() => {
         if (map && selectedStartPoint && selectedEndPoint) {
-            getDirections(map, selectedStartPoint, selectedEndPoint);
+            getDirections(map, selectedStartPoint, selectedEndPoint, setDistance);
         }
 
-    }, [selectedStartPoint, selectedEndPoint, map])
+    }, [selectedStartPoint, selectedEndPoint, map, setDistance])
 
     async function handleStartPoint(e: ChangeEvent<HTMLInputElement>) {
         e.preventDefault();
@@ -319,11 +339,6 @@ const LocationInput: React.FC = () => {
             const center: LngLatLike = [crd.longitude, crd.latitude];
             if (map) {
                 map.flyTo({center, zoom: 14});
-                // if (startPointMarkerRef?.current) {
-                //     startPointMarkerRef.current.remove();
-                // }
-                // const marker = new mapboxgl.Marker().setLngLat([crd.longitude, crd.latitude]).addTo(map);
-                // startPointMarkerRef.current = marker;
                 
                 const res = await axios.get(`https://api.mapbox.com/geocoding/v5/mapbox.places/${crd.longitude},${crd.latitude}.json?access_token=${mapboxgl.accessToken}&limit=1`)
                 const { features } = res.data;

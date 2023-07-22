@@ -2,6 +2,9 @@
 import styled from "styled-components";
 import DirectionsIcon from '@mui/icons-material/Directions';
 import Co2Icon from '@mui/icons-material/Co2';
+import { useContext } from "react";
+import { MapContext, MapContextType } from "./MapPage";
+import { DistanceToCarbonParam } from "../../constant";
 
 const MainContainer = styled.div`
     border: none;
@@ -71,17 +74,20 @@ const CallCarBtn = styled.button`
 
 const InfoCard: React.FC = () => {
 
+    const mapContext: MapContextType | null = useContext(MapContext);
+    const { distance } = mapContext;    // distance in meters
+
     return (
         <MainContainer>
             <InfoContainer>
                 <DistanceContainer>
                     <DirectionsIcon />
-                    <DistanceText>2 KM</DistanceText>
+                    <DistanceText>{`${Math.round(distance / 10) / 100} KM`}</DistanceText>
                 </DistanceContainer>
                 <Divider />
                 <CarbonContainer>
                     <Co2Icon />
-                    <CarbonText>0.23 KG</CarbonText>
+                    <CarbonText>{`${Math.round(distance / 1000 * DistanceToCarbonParam * 100) / 100} KG`}</CarbonText>
                 </CarbonContainer>
             </InfoContainer>
             <CallCarBtn>預約叫車</CallCarBtn>
